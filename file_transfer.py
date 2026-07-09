@@ -33,6 +33,16 @@ def _safe_final_name(base_dir, raw_name):
 
 
 def handle_upload_chunk():
+    # Top-level guard: never let an unexpected error surface as a bare 500.
+    try:
+        return _handle_upload_chunk_impl()
+    except Exception as e:
+        import traceback
+        err_logger.error(f"upload_chunk fatal: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "server_error", "detail": str(e)}), 500
+
+
+def _handle_upload_chunk_impl():
     ip = request.remote_addr
 
     with STATE_LOCK:
@@ -43,13 +53,16 @@ def handle_upload_chunk():
     if not rate_limit_ok(ip, "upload"):
         return jsonify({"error": "rate_limited"}), 429
 
+    # Resumable.js sends its params in the QUERY STRING (and sometimes the form).
+    # request.values merges args + form, so this works either way.
+    params = request.values
     try:
-        total_size = int(request.form.get('resumableTotalSize', 0))
+        total_size = int(params.get('resumableTotalSize', 0) or 0)
     except (TypeError, ValueError):
         return jsonify({"error": "bad_request"}), 400
 
-    resumable_filename = request.form.get('resumableFilename', '')
-    sender = request.form.get('sender', 'Anonymous')[:40]
+    resumable_filename = params.get('resumableFilename', '')
+    sender = (params.get('sender') or 'Anonymous')[:40]
 
     # ITEM 8: extension + size validation up front (fail on first chunk)
     if not extension_allowed(resumable_filename):
@@ -69,9 +82,9 @@ def handle_upload_chunk():
         pass
 
     try:
-        chunk_number = int(request.form.get('resumableChunkNumber'))
-        total_chunks = int(request.form.get('resumableTotalChunks'))
-        identifier = secure_filename(request.form.get('resumableIdentifier', '')) or uuid.uuid4().hex
+        chunk_number = int(params.get('resumableChunkNumber'))
+        total_chunks = int(params.get('resumableTotalChunks'))
+        identifier = secure_filename(params.get('resumableIdentifier', '')) or uuid.uuid4().hex
     except (TypeError, ValueError):
         return jsonify({"error": "bad_request"}), 400
 
