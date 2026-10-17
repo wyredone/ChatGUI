@@ -57,3 +57,5 @@ Then click **Start Server** and share the displayed URL / QR code with devices o
 ## Notes
 
 Designed for trusted local networks. Uses HTTP (no TLS) for zero-config LAN use.
+
+Default web server port: 48317. Existing saved port settings are preserved.

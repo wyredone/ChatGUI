@@ -49,7 +49,7 @@ SECRET_KEY = get_or_create_secret_key()
 SERVER_CONFIG = {
     "shared_dir": SHARED_FILES_DIR,
     "upload_tmp_dir": UPLOAD_TMP_DIR,
-    "port": 5000,
+    "port": 48317,
     "running": False,
     "server_instance": None,
     "web_theme": "dark",
